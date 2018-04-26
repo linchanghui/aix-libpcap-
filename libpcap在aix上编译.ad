@@ -99,4 +99,6 @@ error: File not found: /var/tmp/m4-1.4.11-1.ppc/opt/freeware/share/doc/m4-1.4.11
 
 
 最后libpcap的静态库出现在/usr/local/lib/libpcap.a
+建议载下来的包都用rpmbuild --rebuild 重新build一下,rpmbuild的一个比较好的使用文档 https://www.ibm.com/developerworks/aix/library/au-aix-build-open-source-rpm-packages/
+
 我会在后面加上对aix 上libpcap应用的测试
