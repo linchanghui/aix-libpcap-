@@ -1,0 +1,102 @@
+linch@sinoregal.cn
+[source,]
+----
+******************测试工具的安装******************
+----
+步骤1
+
+下载libpcap在aix上的源码包 http://www.perzl.org/aix/index.php?n=main.libpcap(libpcap-devel-1.8.1-2.aix5.1.ppc.rpm)
+----
+[root@aix_vm_dev01:/]#rpm -ivh libpcap-devel-1.8.1-2.aix5.1.ppc.rpm
+error: Failed dependencies:
+        libpcap = 1.8.1-2 is needed by libpcap-devel-1.8.1-2.ppc
+----
+按提示安装libpcap-1.8.1-2.src.rpm
+----
+[root@aix_vm_dev01:/]#rpm -ivh libpcap-1.8.1-2.src.rpm
+   1:libpcap                warning: user mperzl does not exist - using root
+warning: user mperzl does not exist - using root
+warning: user mperzl does not exist - using root
+warning: user mperzl does not exist - using root%)
+warning: user mperzl does not exist - using root
+warning: user mperzl does not exist - using root%)
+########################################### [100%]
+
+----
+依旧失败
+
+----
+[root@aix_vm_dev01:/]#rpm -qa libpcap
+无结果
+----
+
+google "warning: user mperzl does not exist - using root"有人说是32bit或者64bit的问题
+尝试rpmbuild --rebuild 重新compile libpcap-1.8.1-2.src.rpm
+
+----
+[root@aix_vm_dev01:/]#rpmbuild --rebuild libpcap-1.8.1-2.src.rpm
+....
+Requires: /bin/sh
+Wrote: /opt/freeware/src/packages/RPMS/ppc/libpcap-1.8.1-2.aix6.1.ppc.rpm
+Wrote: /opt/freeware/src/packages/RPMS/ppc/libpcap-devel-1.8.1-2.aix6.1.ppc.rpm
+Executing(%clean): /bin/sh -e /var/tmp/rpm-tmp.heQ7ag
+...
+----
+重build完显示产生了两个适配当前服务器的rpm安装包在/opt/freeware/src/packages/RPMS/ppc目录下
+依次安装这两个包
+----
+[root@aix_vm_dev01:/]#rpm -ivh /opt/freeware/src/packages/RPMS/ppc/libpcap-1.8.1-2.aix6.1.ppc.rpm
+Preparing...                ########################################### [100%]
+   1:libpcap                ########################################### [100%]
+[root@aix_vm_dev01:/]#rpm -ivh /opt/freeware/src/packages/RPMS/ppc/libpcap-devel-1.8.1-2.aix6.1.ppc.rpm
+Preparing...                ########################################### [100%]
+   1:libpcap-devel          ########################################### [100%]
+[root@aix_vm_dev01:/]#rpm -qa libpcap
+libpcap-1.8.1-2.ppc
+----
+完成~
+但是这个是我事后再走一遍。一开始的包缺失的很厉害
+libpcap >> flex,bison >> m4 >> libsigsegv >> gun make
+
+如果只是简单的下载这些包安装，会遇到例如版本依赖关系看过去已经达到，但是依旧无法安装的问题，例如
+----
+[root@aix_vm_dev01:/]#rpmbuild --rebuild m4-1.4.17-1.src.rpm
+Installing m4-1.4.17-1.src.rpm
+error: Failed build dependencies:
+        libsigsegv-devel >= 2.6 is needed by m4-1.4.17-1.ppc
+[root@aix_vm_dev01:/]#rpm -qa libsigsegv-devel
+libsigsegv-devel-2.11-1.ppc
+----
+
+遇到这类问题，多数是因为简单的使用rpm -ivh 安装官网下载的rpm包，而没有使用rpmbuild 对下载的包做一次兼容性的重编译
+
+第二个比较烦人的问题是，这些包的版本支持。以下是我最终build出来后可以work的一套版本号
+make-4.1-1.ppc
+libsigsegv-2.11-1.ppc
+m4-1.4.16-1.ppc
+flex-2.5.36-1.ppc
+bison-2.3-1.ppc
+
+libpcap-1.8.1-2.ppc
+其他的还有一些包的bug，或者aix缺乏工具的问题，例如
+----
+rpmbuild --rebuild m4-1.4.10-1.src.rpm
+...
+ld: 0711-317 ERROR: Undefined symbol: .decimal_point_char
+...
+这个m4 1.4.10-1的bug，我换了一个版本就行了
+----
+
+
+----
+rpmbuild --rebuild m4-1.4.11-1.src.rpm
+...
+/var/tmp/rpm-tmp.pQIaad[28]: /opt/freeware/bin/mkdir:  not found
+error: Bad exit status from /var/tmp/rpm-tmp.pQIaad (%doc)
+error: File not found: /var/tmp/m4-1.4.11-1.ppc/opt/freeware/share/doc/m4-1.4.11
+这个做一个/opt/freeware/bin/mkdir底下的软连接即可
+----
+
+
+最后libpcap的静态库出现在/usr/local/lib/libpcap.a
+我会在后面加上对aix 上libpcap应用的测试
